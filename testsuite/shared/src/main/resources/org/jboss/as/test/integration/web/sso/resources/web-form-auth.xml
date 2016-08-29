@@ -4,6 +4,10 @@
     <distributable/>
     <description>WebApp Integration Tests</description>
     <servlet>
+        <servlet-name>InvalidationServlet</servlet-name>
+        <servlet-class>org.jboss.as.test.integration.web.sso.InvalidationServlet</servlet-class>
+    </servlet>
+    <servlet>
         <servlet-name>LogoutServlet</servlet-name>
         <servlet-class>org.jboss.as.test.integration.web.sso.LogoutServlet</servlet-class>
     </servlet>
@@ -11,6 +15,10 @@
         <servlet-name>EJBServlet</servlet-name>
         <servlet-class>org.jboss.as.test.integration.web.sso.EJBServlet</servlet-class>
     </servlet>
+    <servlet-mapping>
+        <servlet-name>InvalidationServlet</servlet-name>
+        <url-pattern>/Invalidation</url-pattern>
+    </servlet-mapping>
     <servlet-mapping>
         <servlet-name>LogoutServlet</servlet-name>
         <url-pattern>/Logout</url-pattern>
