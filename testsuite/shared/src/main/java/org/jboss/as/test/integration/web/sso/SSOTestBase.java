@@ -73,12 +73,35 @@ public abstract class SSOTestBase {
 
     private static Logger log = Logger.getLogger(SSOTestBase.class);
 
+    private enum LogoutType {
+        INVALIDATION ("Invalidation"),
+        LOGOUT ("Logout");
+
+        private final String servletName;
+
+        LogoutType(String servletName) {
+            this.servletName = servletName;
+        }
+
+        public String getServletName() {
+            return servletName;
+        }
+    }
+
+    public static void executeFormAuthSingleSignOnTestWithLogout(URL serverA, URL serverB, Logger log) throws Exception {
+        executeFormAuthSingleSignOnTest(serverA, serverB, log, LogoutType.LOGOUT);
+    }
+
+    public static void executeFormAuthSingleSignOnTestWithInvalidation(URL serverA, URL serverB, Logger log) throws Exception {
+        executeFormAuthSingleSignOnTest(serverA, serverB, log, LogoutType.INVALIDATION);
+    }
+
     /**
      * Test single sign-on across two web apps using form based auth
      *
      * @throws Exception
      */
-    public static void executeFormAuthSingleSignOnTest(URL serverA, URL serverB, Logger log) throws Exception {
+    public static void executeFormAuthSingleSignOnTest(URL serverA, URL serverB, Logger log, LogoutType logoutType) throws Exception {
         URL warA1 = new URL(serverA, "/war1/");
         URL warB2 = new URL(serverB, "/war2/");
 
@@ -108,7 +131,8 @@ public abstract class SSOTestBase {
             checkAccessAllowed(httpclient, warB2 + "EJBServlet");
 
             // Now try logging out of war2
-            executeLogout(httpclient, warB2);
+            executeLogout(httpclient, warB2, logoutType);
+            checkAccessDenied(httpclient, warB2 + "index.html");
         } finally {
             HttpClientUtils.closeQuietly(httpclient);
         }
@@ -198,8 +222,8 @@ public abstract class SSOTestBase {
             // Also access to war2 should be granted + set session timeout to 5 seconds
             checkAccessAllowed(httpclient, warB2 + "set_session_timeout.jsp");
 
-            // wait 5 seconds session timeout + 1 seconds reserve
-            Thread.sleep((5+1)*1000);
+            // wait 5 seconds session timeout + 5 seconds reserve
+            Thread.sleep((5+5)*1000);
 
             // After timeout I should be not able to access the app
             checkAccessDenied(httpclient, warA1 + "index.html");
@@ -211,9 +235,8 @@ public abstract class SSOTestBase {
 
     }
 
-
-    public static void executeLogout(HttpClient httpConn, URL warURL) throws IOException {
-        HttpGet logout = new HttpGet(warURL + "Logout");
+    public static void executeLogout(HttpClient httpConn, URL warURL, LogoutType logoutType) throws IOException {
+        HttpGet logout = new HttpGet(warURL + logoutType.getServletName());
         HttpResponse response = httpConn.execute(logout);
         try {
             int statusCode = response.getStatusLine().getStatusCode();
@@ -283,7 +306,7 @@ public abstract class SSOTestBase {
             assertTrue("Expected code == OK but got " + statusCode + " for request=" + url, statusCode == HttpURLConnection.HTTP_OK);
 
             String body = EntityUtils.toString(response.getEntity());
-            assertTrue("Redirected to login page for request=" + url + ", body[" + body + "]", body.indexOf("j_security_check") > 0);
+            assertTrue("Expected redirect to login page for request=" + url + ", body[" + body + "]", body.indexOf("j_security_check") > 0);
         } finally {
             HttpClientUtils.closeQuietly(response);
         }
@@ -357,6 +380,7 @@ public abstract class SSOTestBase {
         war.addAsWebResource(tccl.getResource(resourcesLocation + "login.html"), "login.html");
 
         war.addClass(EJBServlet.class);
+        war.addClass(InvalidationServlet.class);
         war.addClass(LogoutServlet.class);
 
         return war;
